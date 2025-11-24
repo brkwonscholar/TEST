@@ -3,8 +3,8 @@ from openai import OpenAI
 
 import streamlit as st
 
-client = OpenAI(api_key = "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")
-
+os.environ["OPENAI_API_KEY"] = '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'
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"),)
 
 import streamlit as st
 
