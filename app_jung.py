@@ -6,17 +6,6 @@ import streamlit as st
 os.environ["OPENAI_API_KEY"] = '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'
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"),)
 
-import streamlit as st
-
-# 운세 리스트
-fortune_list = [
-    "오늘은 행운의 날이에요!",
-    "힘든 하루가 예상되니 조심하세요.",
-    "새로운 기회가 찾아올 거예요!",
-    "건강을 잘 챙기세요.",
-    "오늘은 편안한 하루가 될 거예요."
-]
-
 # 앱 제목
 st.title("🌿🌲 GREEN DAILY 🗑️♻️")
 
