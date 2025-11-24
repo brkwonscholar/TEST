@@ -1,19 +1,20 @@
-import os
-from openai import OpenAI
 import streamlit as st
-
-# --- API 키 강제 설정 (요청하신 키 적용) ---
-os.environ["OPENAI_API_KEY"] = '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'
-
-# 클라이언트 초기화
-try:
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-except Exception as e:
-    st.error(f"API 키 오류: {e}")
+from openai import OpenAI
+import os
 
 # --- 페이지 설정 및 UI ---
 st.set_page_config(page_title="GREEN DAILY", page_icon="🌿")
 st.title("🌿🌲 GREEN DAILY 🗑️♻️")
+
+# --- API 키 설정 (Secrets 사용) ---
+# Streamlit Cloud의 Secrets에서 'OPENAI_API_KEY'를 가져옵니다.
+if "OPENAI_API_KEY" in st.secrets:
+    api_key = st.secrets["OPENAI_API_KEY"]
+    client = OpenAI(api_key=api_key)
+else:
+    # Secrets가 설정되지 않았을 경우 에러 메시지 표시
+    st.error("🚨 API 키가 설정되지 않았습니다. Streamlit Cloud의 [Settings] > [Secrets]에 키를 등록해주세요.")
+    st.stop()
 
 # 날짜/상황 입력 받기
 title = st.text_input("어떤 상황에서 환경보호루틴을 실천하시려는건가요 ?", placeholder="예: 카페에서 음료를 마실 때")
@@ -41,7 +42,6 @@ if st.button("오늘의 루틴 만들기"):
                 )
                 
                 # 2. 이미지 생성 (DALL-E 3)
-                # 프롬프트를 상황에 맞게 조금 더 구체화하여 예쁜 그림이 나오도록 조정했습니다.
                 response = client.images.generate(
                     model="dall-e-3",
                     prompt=f"환경 보호를 실천하는 따뜻하고 평화로운 일러스트. 상황: {title}. 지브리 스타일, 고해상도, 텍스트 없는 그림.",
