@@ -16,7 +16,20 @@ if 'ai_profile' not in st.session_state:
 st.title("TYPEN: MBTI 빅데이터 기반 맞춤형 도서 큐레이터") 
 st.header("프로필 설정")
 
-# ⚠️ API Key: 사용자 코드에 포함된 API 키를 유지
+# --- API 키 설정 (Secrets 사용) ---
+# 에러 방지를 위한 안전한 키 가져오기 로직
+# 1. Secrets에 'OPENAI_API_KEY'가 있는지 확인
+if "OPENAI_API_KEY" in st.secrets:
+    api_key = st.secrets["OPENAI_API_KEY"]
+    client = OpenAI(api_key=api_key)
+# 2. 혹시 사용자가 'API_KEY'라고 저장했을 경우를 대비 (호환성)
+elif "API_KEY" in st.secrets:
+    api_key = st.secrets["API_KEY"]
+    client = OpenAI(api_key=api_key)
+else:
+    # 키가 아예 없을 경우 에러 메시지
+    st.error("🚨 API 키를 찾을 수 없습니다. Streamlit Secrets에 'OPENAI_API_KEY'를 등록해주세요.")
+    st.stop()
 
 # 사용자 이름 입력
 title = st.text_input("**당신의 이름을 작성해주세요**", "") 
