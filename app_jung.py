@@ -1,0 +1,53 @@
+import os
+from openai import OpenAI
+
+import streamlit as st
+
+client = OpenAI(api_key = “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”)
+
+
+import streamlit as st
+
+# 운세 리스트
+fortune_list = [
+    "오늘은 행운의 날이에요!",
+    "힘든 하루가 예상되니 조심하세요.",
+    "새로운 기회가 찾아올 거예요!",
+    "건강을 잘 챙기세요.",
+    "오늘은 편안한 하루가 될 거예요."
+]
+
+# 앱 제목
+st.title("🌿🌲 GREEN DAILY 🗑️♻️")
+
+# 날짜 입력 받기
+title = st.text_input("어떤 상황에서 환경보호루틴을 실천하시려는건가요 ?")
+
+# 운세 추천 버튼
+if st.button("오늘의 루틴 만들기"):
+    
+    chat_completion = client.chat.completions.create(
+        messages=[
+        {
+            "role": "user",
+            "content": title,
+        },
+        {
+            "role": "system",
+            "content": "환경보호하는 활동을 실천하려는데 입력받은 내용에서 최대한 실천할수있는 루틴을 간략하게 3가지정도 짜줘",
+        }
+    ],
+        model="gpt-4o",
+)
+
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt="환경보호하는 활동을 실천하려는데 입력받은 내용에서 최대한 실천할수있는 루틴을 간략하게 3가지정도 짜줘",
+        size="1024x1024",
+        quality="standard",
+        n=1,
+        )
+    result = chat_completion.choices[0].message.content
+    image_url = response.data[0].url
+    st.write(result)
+    st.image(image_url)
