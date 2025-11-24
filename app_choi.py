@@ -1,6 +1,9 @@
 import streamlit as st
 from openai import OpenAI
 
+# ⚠️ API Key: 사용자 코드에 포함된 API 키를 유지
+client = OpenAI(api_key="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")
+
 # ------------------------------------------------
 # Streamlit 상태 초기화
 # ------------------------------------------------
@@ -16,8 +19,6 @@ if 'ai_profile' not in st.session_state:
 st.title("TYPEN: MBTI 빅데이터 기반 맞춤형 도서 큐레이터") 
 st.header("프로필 설정")
 
-# ⚠️ API Key: 사용자 코드에 포함된 API 키를 유지
-client = OpenAI(api_key="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")
 
 
 # 사용자 이름 입력
