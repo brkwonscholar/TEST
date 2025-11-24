@@ -8,7 +8,7 @@ st.set_page_config(page_title="GREEN DAILY", page_icon="🌿")
 # --- API 키 처리 로직 (유연한 방식) ---
 # 1. Streamlit Secrets에 저장된 키가 있는지 확인
 if "OPENAI_API_KEY" in st.secrets:
-    api_key = st.secrets["OPENAI_API_KEY"]
+    api_key = "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"
 else:
     # 2. 없으면 사이드바에서 직접 입력받기 (테스트용)
     with st.sidebar:
