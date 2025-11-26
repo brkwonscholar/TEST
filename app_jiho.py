@@ -54,38 +54,45 @@ def generate_recipes(ingredients: str, n: int):
 
 # 버튼 클릭 시 실행
 if st.button("🍳 요리 생성하기", key="generate_recipe"):
-    if not OPENAI_API_KEY:
-        st.error("OPENAI_API_KEY가 설정되어 있지 않습니다.")
-    elif not ingredients.strip():
+    # 수정된 부분: 이미 위에서 api_key 검사를 했으므로 중복 검사 삭제
+    if not ingredients.strip():
         st.warning("재료를 입력해주세요!")
     else:
         with st.spinner("AI가 레시피를 생성하는 중입니다..."):
-            result = generate_recipes(ingredients, num_recipes)
+            try:
+                result = generate_recipes(ingredients, num_recipes)
 
-        # 여러 요리별로 분리
-        recipes = result.split('\n\n')
-        clean_recipes = [r.strip() for r in recipes if r.strip()]
+                # 여러 요리별로 분리
+                recipes = result.split('\n\n')
+                clean_recipes = [r.strip() for r in recipes if r.strip()]
 
-        st.markdown("## 🍽️ 생성된 요리들")
+                st.markdown("## 🍽️ 생성된 요리들")
 
-        for recipe in clean_recipes:
-            # 요리 제목 추출
-            first_line = recipe.split('\n')[0]
-            title = first_line.replace("1)", "").strip()
+                for recipe in clean_recipes:
+                    # 요리 제목 추출
+                    lines = recipe.split('\n')
+                    if not lines: continue
+                    
+                    first_line = lines[0]
+                    title = first_line.replace("1)", "").replace("1.", "").strip()
 
-            # 제목 크게 표시 (하얀색 글자)
-            st.markdown(f"<h1 style='text-align: left; color: white;'>{title}</h1>", unsafe_allow_html=True)
+                    # 제목 크게 표시 (하얀색 글자)
+                    st.markdown(f"<h1 style='text-align: left; color: white;'>{title}</h1>", unsafe_allow_html=True)
 
-            # 나머지 내용 처리 (중복 텍스트 제거, #### 제거, 리스트로 표시)
-            lines = recipe.split('\n')[1:]  # 제목 제외
-            for line in lines:
-                clean_line = line.replace('#### 요리 설명:', '').replace('요리 설명:', '')
-                clean_line = clean_line.replace('#### 필요한 재료 목록:', '').replace('필요한 재료 목록:', '')
-                clean_line = clean_line.replace('#### 단계별 레시피:', '').replace('단계별 레시피:', '')
-                clean_line = clean_line.strip()
-                if clean_line:
-                    st.markdown(f"- {clean_line}")
+                    # 나머지 내용 처리
+                    content_lines = lines[1:]
+                    for line in content_lines:
+                        # 불필요한 기호 제거
+                        clean_line = line.replace('####', '').replace('**', '').strip()
+                        
+                        # "요리 설명:", "필요한 재료 목록:" 같은 헤더 텍스트 처리
+                        if "요리 설명" in clean_line or "필요한 재료" in clean_line or "단계별 레시피" in clean_line:
+                            st.markdown(f"**{clean_line}**")
+                        elif clean_line:
+                            st.markdown(f"- {clean_line}")
 
-            st.markdown("---")
+                    st.markdown("---")
+            except Exception as e:
+                st.error(f"에러가 발생했습니다: {e}")
 
 st.markdown("---")
