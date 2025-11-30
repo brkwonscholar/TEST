@@ -3,20 +3,9 @@ import openai
 import streamlit as st
 import requests  # API 호출에 사용할 수 있지만 bs4 의존성은 사용하지 않음
 
-# --- API 키 설정 (Secrets 사용) ---
-# 에러 방지를 위한 안전한 키 가져오기 로직
-# 1. Secrets에 'OPENAI_API_KEY'가 있는지 확인
-if "OPENAI_API_KEY" in st.secrets:
-    api_key = st.secrets["OPENAI_API_KEY"]
-    client = OpenAI(api_key=api_key)
-# 2. 혹시 사용자가 'API_KEY'라고 저장했을 경우를 대비 (호환성)
-elif "API_KEY" in st.secrets:
-    api_key = st.secrets["API_KEY"]
-    client = OpenAI(api_key=api_key)
-else:
-    # 키가 아예 없을 경우 에러 메시지
-    st.error("🚨 API 키를 찾을 수 없습니다. Streamlit Secrets에 'OPENAI_API_KEY'를 등록해주세요.")
-    st.stop()
+# 환경 변수 설정: 스트림릿 secrets 파일에 설정된 API Key 사용
+os.environ["OPENAI_API_KEY"] = st.secrets["API_KEY"]
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 # 스트림릿 앱 설정: 밝은 배경 스타일 추가
 st.set_page_config(page_title="트립AI", layout="wide")
