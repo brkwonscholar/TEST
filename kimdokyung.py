@@ -1,11 +1,15 @@
 import os
-import openai
 import streamlit as st
-import requests  # API 호출에 사용할 수 있지만 bs4 의존성은 사용하지 않음
+from openai import OpenAI # 변경됨: OpenAI 클래스 임포트
 
-# 환경 변수 설정: 스트림릿 secrets 파일에 설정된 API Key 사용
-os.environ["OPENAI_API_KEY"] = st.secrets["API_KEY"]
-openai.api_key = os.environ.get("OPENAI_API_KEY")
+# 환경 변수 및 클라이언트 설정
+# st.secrets에 "API_KEY"가 설정되어 있어야 합니다.
+if "API_KEY" in st.secrets:
+    api_key = st.secrets["API_KEY"]
+    client = OpenAI(api_key=api_key) # 변경됨: 클라이언트 객체 생성
+else:
+    st.error("Streamlit secrets에 API_KEY가 설정되지 않았습니다.")
+    st.stop()
 
 # 스트림릿 앱 설정: 밝은 배경 스타일 추가
 st.set_page_config(page_title="트립AI", layout="wide")
@@ -61,7 +65,7 @@ def generate_travel_plan(destination, budget, num_days, num_people, theme):
             "숙소": "추천 숙소 정보"
         }
     
-    # OpenAI API 호출을 위한 프롬프트 작성 (gpt-3.5-turbo 사용)
+    # OpenAI API 호출을 위한 프롬프트 작성
     system_prompt = (
         "당신은 각 여행지의 네이버 블로그에서 사실 확인된 정보를 바탕으로 "
         "자세하고 신뢰도 높은 여행 일정을 작성하는 전문가입니다. "
@@ -85,7 +89,6 @@ def generate_travel_plan(destination, budget, num_days, num_people, theme):
         "테마를 정할때 로맨틱을 선택한 경우에는 반드시 그 여행지의 로맨틱 명소를 포함해 주세요."
         "테마를 정할때는 반드시 그에 맞는 명소, 맛집, 숙소를 포함해 주세요."
         "모든 정보를 한국어로 작성해 주세요."
-        
     )
     
     user_prompt = (
@@ -102,14 +105,17 @@ def generate_travel_plan(destination, budget, num_days, num_people, theme):
     )
     
     try:
-        # OpenAI ChatCompletion API 호출
-        response = openai.ChatCompletion.create(
+        # 변경됨: 클라이언트 객체 사용 (client.chat.completions.create)
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "system", "content": system_prompt},
-                      {"role": "user", "content": user_prompt}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
             temperature=0.7,
         )
-        travel_plan = response['choices'][0]['message']['content']
+        # 변경됨: 객체 속성 접근 방식 사용 (.choices[0].message.content)
+        travel_plan = response.choices[0].message.content
         return travel_plan
     except Exception as e:
         st.error(f"OpenAI API 에러가 발생했습니다: {e}")
