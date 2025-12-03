@@ -2,5 +2,7 @@ streamlit>=1.40.0
 openai>=1.0.0
 PyPDF2
 beautifulsoup4
-load_dotenv
-Nominatim
+python-dotenv
+openai==0.28.1
+geopy
+folium
