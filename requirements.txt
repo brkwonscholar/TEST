@@ -3,3 +3,4 @@ openai>=1.0.0
 PyPDF2
 beautifulsoup4
 load_dotenv
+Nominatim
