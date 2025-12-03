@@ -6,6 +6,7 @@ from typing import Dict, Optional
 import streamlit as st
 from dotenv import load_dotenv
 import openai
+from openai import OpenAI  # <--- [수정] 최신 라이브러리 클래스 임포트
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 import folium
@@ -13,20 +14,29 @@ from streamlit.components.v1 import html
 
 # --- 환경변수 로드 ---
 load_dotenv()
+
 # --- API 키 설정 (Secrets 사용) ---
-# 에러 방지를 위한 안전한 키 가져오기 로직
+api_key = None
+client = None
+
 # 1. Secrets에 'OPENAI_API_KEY'가 있는지 확인
 if "OPENAI_API_KEY" in st.secrets:
     api_key = st.secrets["OPENAI_API_KEY"]
-    client = OpenAI(api_key=api_key)
 # 2. 혹시 사용자가 'API_KEY'라고 저장했을 경우를 대비 (호환성)
 elif "API_KEY" in st.secrets:
     api_key = st.secrets["API_KEY"]
-    client = OpenAI(api_key=api_key)
-else:
+# 3. 로컬 환경 (.env) fallback
+elif os.getenv("OPENAI_API_KEY"):
+    api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
     # 키가 아예 없을 경우 에러 메시지
     st.error("🚨 API 키를 찾을 수 없습니다. Streamlit Secrets에 'OPENAI_API_KEY'를 등록해주세요.")
     st.stop()
+else:
+    # [수정] 클라이언트 초기화
+    client = OpenAI(api_key=api_key)
+
 
 st.set_page_config(page_title="오늘 뭐할까?", layout="wide")
 st.title("✈️오늘 뭐할까?")
@@ -47,6 +57,8 @@ with st.sidebar:
 def safe_parse_json(content: str) -> Optional[Dict]:
     if content.startswith("```") and content.endswith("```"):
         content = content.strip("`\n")
+    if content.startswith("json"):
+        content = content[4:].strip()
     content = content.replace("'", '"')
     try:
         return json.loads(content)
@@ -54,10 +66,10 @@ def safe_parse_json(content: str) -> Optional[Dict]:
         return None
 
 # OpenAI 호출
-
 def generate_itinerary(destination: str, days: int, travel_keywords: str, budget_level: str, travel_mode: str, pace: str, current_location: str, departure_time_str: str) -> Dict:
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OpenAI API key not configured.")
+    # [수정] 전역 변수 client 사용 확인
+    if not client:
+        raise RuntimeError("OpenAI Client not initialized.")
 
     system_prompt = (
         "당신은 친절한 여행 계획 전문가입니다. 사용자가 제공한 여행 정보로 JSON 일정표를 생성하세요."
@@ -72,7 +84,8 @@ def generate_itinerary(destination: str, days: int, travel_keywords: str, budget
         "각 일자별 3~6개의 활동과 시간, 간단한 설명, 주소, 이동수단, 예상 소요시간, 예상 비용 포함하여 작성하세요."
     )
 
-    resp = openai.ChatCompletion.create(
+    # [수정] 최신 문법으로 변경 (client.chat.completions.create)
+    resp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
@@ -82,7 +95,9 @@ def generate_itinerary(destination: str, days: int, travel_keywords: str, budget
         max_tokens=2000,
     )
 
-    content = resp['choices'][0]['message']['content'].strip()
+    # [수정] 응답 객체 접근 방식 변경 (딕셔너리 접근 -> 객체 속성 접근)
+    content = resp.choices[0].message.content.strip()
+    
     itin = safe_parse_json(content)
     if not itin:
         st.error("AI 응답을 JSON으로 파싱할 수 없습니다. 원본 내용:")
@@ -98,6 +113,7 @@ def geocode_itinerary(itin: Dict) -> Dict:
     for day in itin.get("day_plans", []):
         for seg in day.get("segments", []):
             addr = seg.get("address_optional") or seg.get("title")
+            # 좌표가 없을 때만 요청
             if addr and (not seg.get("lat") or not seg.get("lon")):
                 try:
                     loc = geocode(addr)
@@ -129,42 +145,52 @@ def render_map_safe(itin: Dict):
     html(map_html, height=500, width=700)
 
 # 일정표 UI 및 총 경비 계산
-
 def display_itinerary(itin: Dict):
     total_cost = 0
+    st.markdown(f"### 📅 {itin.get('title', '여행 일정')}")
+    
     for day in itin.get('day_plans', []):
         with st.expander(f"Day {day.get('day')}", expanded=False):
             for seg in day.get('segments', []):
                 st.markdown(f"**{seg.get('time','')} - {seg.get('title','')}**")
                 st.write(seg.get('description',''))
-                if seg.get('address_optional'):
-                    st.caption(f"📍 주소: {seg.get('address_optional')}")
-                if seg.get('est_duration_minutes'):
-                    st.info(f"⏱ 예상 소요 시간: {seg.get('est_duration_minutes')}분")
-                if seg.get('transport'):
-                    st.info(f"🚗 이동 수단: {seg.get('transport')}")
-                if seg.get('cost'):
-                    st.info(f"💰 예상 비용: {seg.get('cost')}원")
-                    total_cost += seg.get('cost',0)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if seg.get('address_optional'):
+                        st.caption(f"📍 {seg.get('address_optional')}")
+                    if seg.get('est_duration_minutes'):
+                        st.caption(f"⏱ {seg.get('est_duration_minutes')}분 소요")
+                with col2:
+                    if seg.get('transport'):
+                        st.caption(f"🚗 {seg.get('transport')}")
+                    if seg.get('cost'):
+                        st.caption(f"💰 {seg.get('cost')}원")
+                        total_cost += int(seg.get('cost', 0))
                 st.markdown("---")
-    st.success(f"총 예상 경비: {total_cost}원")
+    
+    st.success(f"💰 총 예상 경비: {total_cost:,}원")
 
 # 메인
 if generate:
-    if not OPENAI_API_KEY:
-        st.error(".env 파일이나 환경변수에 OPENAI_API_KEY를 설정하세요.")
+    # client 변수가 초기화되었는지 확인
+    if not client:
+        st.error("API 키 설정에 실패하여 AI 클라이언트를 초기화할 수 없습니다.")
     else:
         try:
             with st.spinner("AI가 일정과 예상 경비 생성 중입니다... 잠시만 기다려주세요"):
                 departure_time_str = departure_time.strftime('%H:%M')
                 itin = generate_itinerary(destination, int(days), travel_keywords, budget_level, travel_mode, pace, current_location, departure_time_str)
+                
                 if itin:
                     itin.setdefault('title', f"{destination} 여행 계획")
                     itin.setdefault('destination', destination)
                     itin.setdefault('days', days)
                     itin.setdefault('generated_at', datetime.utcnow().isoformat() + 'Z')
 
-                    itin = geocode_itinerary(itin)
+                    # 지오코딩 수행
+                    with st.spinner("위치 정보를 변환 중입니다..."):
+                        itin = geocode_itinerary(itin)
 
                     st.success("일정 및 경비 생성 완료!")
 
